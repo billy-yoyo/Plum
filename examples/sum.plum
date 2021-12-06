@@ -1,0 +1,15 @@
+reduce = start, iter => { 
+    upstream, this => {
+        if this.stop break
+
+        current = start
+        for v in upstream {
+            current = iter(v, current)
+        }
+        this.stop = true
+        current
+    }
+}
+sum = reduce(0, { x, t => x + t })
+
+[1, 2, 3] :: sum -> print

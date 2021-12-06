@@ -1,0 +1,14 @@
+
+
+file("input").readlines := data
+
+with_last = upstream, this => (this.last = upstream.next(), this.last)
+reduce = start, iter => upstream, this => this.current = iter(upstream.next(), this.current ?? start)
+sum = reduce(0, { x, t => x + t })
+
+data :: with_last :> x1, x0 => x1 > x0 :: sum -> print
+
+x = 2 
+  + (1, 2)
+
+file("input") :> .readlines :: with_last :> x1, x0 => x1 > x0 :: sum -> print
