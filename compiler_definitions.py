@@ -22,6 +22,11 @@ def define_whitebreak(parser):
     return Node("whitebreak")
 
 @compiler.define_post
+def define_whitebreak_post(parser, value):
+    parser.assert_next_is({ "type": "whitebreak" })
+    return Node("whitebreak")
+
+@compiler.define_post
 def define_property_access(parser, value):
     parser.assert_flag("value")
     parser.assert_next_is({ "type": "period" })
@@ -32,6 +37,7 @@ def define_property_access(parser, value):
 def define_assign(parser, location):
     parser.assert_true(location.type in ["variable", "property", "property_access"])
     parser.assert_flag("value")
+    parser.assert_no_flag("ignore_assign")
     parser.assert_next_is({ "type": "assign" })
     value = parser.read("value")
     return Node("assign", location=location, value=value)
@@ -63,11 +69,12 @@ def define_binary_operator(parser, value):
 @compiler.define_post
 def define_flow(parser, value):
     parser.assert_flag("value")
-    parser.assert_no_flag("whitebreak")
     parser.assert_no_flag("ignore_flow")
-    parser.assert_next_is([{ "type": "pipe" }, { "type": "map" }, { "type": "write" }, { "type": "read" }])
+    parser.assert_next_is([{ "type": "pipe" }, { "type": "map" }, { "type": "write" }, { "type": "read" }, { "type": "pop" }])
     flow_type = parser.last_type()
-    next_value = parser.read("value", "ignore_flow")
+    next_value = None
+    if flow_type != "pop":
+        next_value = parser.read("value", "ignore_flow")
     return Node("flow", flow_type=flow_type, flow_from=value, flow_to=next_value)
 
 def read_arguments(parser):
@@ -110,6 +117,14 @@ def define_function(parser, value):
         body = parser.read("value")
 
     return Node("function", arguments=arguments, body=body)
+
+@compiler.define_post
+def define_index(parser, value):
+    parser.assert_flag("value")
+    parser.assert_no_flag("ignore_index")
+    parser.assert_next_is({ "type": "index" })
+    index = parser.read("value", "ignore_index", "ignore_flow", "ignore_binary_operator", "ignore_assign", "ignore_tuple")
+    return Node("index", target=value, index=index)
 
 @compiler.define
 def define_block(parser):

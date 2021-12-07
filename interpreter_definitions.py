@@ -8,11 +8,16 @@ interpreter = Interpreter()
 def get_property(target, property):
     if isinstance(target, dict):
         return target.get(property, None)
+    elif isinstance(target, list) or isinstance(target, tuple):
+        try:
+            return target[property]
+        except:
+            return None
     else:
         return getattr(target, property, None)
 
 def set_property(target, property, value):
-    if isinstance(target, dict):
+    if isinstance(target, dict) or isinstance(target, list):
         target[property] = value
     else:
         setattr(target, property, value)
@@ -168,6 +173,13 @@ def create_read_flow(visitor, node_flow_from, node_flow_to):
         return wrap_as_stream(values)
     return executor
 
+def create_pop_flow(visitor, node_flow_from):
+    flow_from = visitor.visit(node_flow_from)
+    def executor(ctx):
+        from_value = wrap_as_stream(flow_from(ctx))
+        return next(from_value)
+    return executor
+
 @interpreter.visitor("variable")
 def visit_variable(visitor, node):
     return lambda ctx: ctx.get(node.name)
@@ -215,6 +227,8 @@ def visit_flow(visitor, node):
         return create_write_flow(visitor, node.flow_from, node.flow_to)
     elif flow_type == "read":
         return create_read_flow(visitor, node.flow_from, node.flow_to)
+    elif flow_type == "pop":
+        return create_pop_flow(visitor, node.flow_from)
     else:
         raise Exception(f"unknown flow type {flow_type}")
 
@@ -240,6 +254,12 @@ def visit_function(visitor, node):
             return body(func_ctx)
         return func
     return executor
+
+@interpreter.visitor("index")
+def visit_index(visitor, node):
+    target = visitor.visit(node.target)
+    index = visitor.visit(node.index)
+    return lambda ctx: get_property(target(ctx), index(ctx))
 
 @interpreter.visitor("block")
 def visit_int(visitor, node):

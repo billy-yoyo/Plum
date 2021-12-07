@@ -1,0 +1,8 @@
+
+
+file("input").readlines()
+    :> int
+    :: window(4)
+    :> w => w:0 < w:3
+    :: sum
+    -> print

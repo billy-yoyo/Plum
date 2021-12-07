@@ -1,0 +1,1 @@
+python "C:\python projects\speedrun_language\plum.py" %*
