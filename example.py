@@ -9,7 +9,7 @@ from interpreter_definitions import interpreter
 #    code = f.read()
 
 code = """
-[1, 2, 3] :: window(2) -> [x, y] => print(x, y)
+cur, total => (cur:0 + total:0, cur:1 + total:1)
 """
 
 stream = TokenStream(tokenizer, code)
@@ -34,7 +34,7 @@ def print_value(title, value, prefix=""):
     else:
         print(f"{prefix}{title}{value}")
 
-#print_value("Nodes:", nodes)
+print_value("Nodes:", nodes)
 #print("read tokens:")
 #print([x.content for x in stream.tokens])
 

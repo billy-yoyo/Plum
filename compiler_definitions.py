@@ -46,6 +46,7 @@ def define_assign(parser, location):
 def define_function_call(parser, value):
     parser.assert_flag("value")
     parser.assert_next_is({ "type": "bracket_open" })
+    parser.assert_no_flag("whitebreak")
     # allow for empty arguments
     args = parser.maybe_read("value") or Node("tuple", values=[])
     parser.assert_next_is({ "type": "bracket_close" })
@@ -57,7 +58,7 @@ def define_binary_operator(parser, value):
     parser.assert_no_flag("ignore_binary_operator")
     parser.assert_next_is({ "type": "binary_operator" })
     operator = parser.last_content()
-    next_value = parser.read("value", "ignore_binary_operator", "ignore_flow")
+    next_value = parser.read("value", "ignore_binary_operator", "ignore_flow", "ignore_tuple")
 
     if value.type == "binary_operator":
         value.values.append(next_value)
@@ -159,6 +160,13 @@ def define_boolean(parser):
     return Node("boolean", value=parser.last_content() == "true")
 
 @compiler.define
+def define_negative(parser):
+    parser.assert_flag("value")
+    parser.assert_next_is({ "type": "binary_operator", "content": "-" })
+    value = parser.read("value", "ignore_binary_operator", "ignore_tuple", "ignore_flow", "ignore_assign")
+    return Node("negative", value=value)
+
+@compiler.define
 def define_list(parser):
     parser.assert_flag("value")
     parser.assert_next_is({ "type": "square_open" })
@@ -199,13 +207,15 @@ def define_wrapped_value(parser):
     parser.assert_next_is({ "type": "bracket_open" })
     value = parser.read("value", "allow_function")
     parser.assert_next_is({ "type": "bracket_close" })
-    return value
+    return Node("wrapped", value=value)
 
 @compiler.define
 def define_if(parser):
     parser.assert_flag("value")
     def read_clause():
+        parser.assert_next_is({ "type": "bracket_open" })
         condition = parser.read("value")
+        parser.assert_next_is({ "type": "bracket_close" })
         body = parser.read("value")
         return condition, body
     
@@ -222,6 +232,26 @@ def define_if(parser):
         else_block = parser.read("value")
     
     return Node("if", if_clause=if_clause, elif_clauses=elif_clauses, else_block=else_block)
+
+@compiler.define
+def define_match(parser):
+    parser.assert_flag("value")
+    
+    cases = []
+    while parser.next_is({ "type": "case" }):
+        condition = parser.read("value", "ignore_function")
+        parser.assert_next_is({ "type": "arrow" })
+        body = parser.read("value")
+        cases.append(Node("case", condition=condition, body=body))
+    
+    parser.assert_true(len(cases) > 0)
+
+    else_block = None
+    if parser.next_is({ "type": "else" }):
+        parser.assert_next_is({ "type": "arrow" })
+        else_block = parser.read("value")
+
+    return Node("match", cases=cases, else_block=else_block)
 
 @compiler.define
 def define_for(parser):

@@ -11,6 +11,8 @@ from interpreter_definitions import interpreter
 def run_code(code, ctx):
     stream = TokenStream(tokenizer, code)
     nodes = compiler.copy(stream).read_all(["value"])
+    if stream.string:
+        print(f"Syntax error, failed to parse: {stream.string}")
     executor = interpreter.visit_all(nodes)
     return executor(ctx)
 

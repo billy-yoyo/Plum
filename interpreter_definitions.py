@@ -46,11 +46,11 @@ def create_operator_executor(values, operator):
     if operator == "+":
         return lambda ctx: sum(v(ctx) for v in values)
     elif operator == "-":
-        return lambda ctx: reduce(lambda x, t: t - x(ctx), values[1:], values[0](ctx))
+        return lambda ctx: reduce(lambda t, x: t - x(ctx), values[1:], values[0](ctx))
     elif operator == "*":
-        return lambda ctx: reduce(lambda x, t: t * x(ctx), values[1:], values[0](ctx))
+        return lambda ctx: reduce(lambda t, x: t * x(ctx), values[1:], values[0](ctx))
     elif operator == "/":
-        return lambda ctx: reduce(lambda x, t: t / x(ctx), values[1:], values[0](ctx))
+        return lambda ctx: reduce(lambda t, x: t / x(ctx), values[1:], values[0](ctx))
     elif operator == "??":
         def executor(ctx):
             for value in values:
@@ -297,6 +297,15 @@ def visit_tuple(visitor, node):
     values = [visitor.visit(v) for v in node.values]
     return lambda ctx: tuple(v(ctx) for v in values)
 
+@interpreter.visitor("negative")
+def visit_negative(visitor, node):
+    value = visitor.visit(node.value)
+    return lambda ctx: -value(ctx)
+
+@interpreter.visitor("wrapped")
+def visit_wrapped(visitor, node):
+    return visitor.visit(node.value)
+
 @interpreter.visitor("if")
 def visit_if(visitor, node):
     if_clause = [visitor.visit(x) for x in node.if_clause]
@@ -309,6 +318,19 @@ def visit_if(visitor, node):
             for elif_clause in elif_clauses:
                 if elif_clause[0](ctx):
                     return elif_clause[1](ctx)
+            if else_block is not None:
+                return else_block(ctx)
+    return executor
+
+@interpreter.visitor("match")
+def visit_match(visitor, node):
+    cases = [[visitor.visit(cond), visitor.visit(body)] for cond, body in node.cases]
+    else_block = visitor.visit(node.else_block) if node.else_block else None
+    def executor(ctx):
+        for case in cases:
+            if case[0](ctx):
+                return case[1](ctx)
+        else:
             if else_block is not None:
                 return else_block(ctx)
     return executor
