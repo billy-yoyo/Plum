@@ -33,5 +33,7 @@ def window(size):
             return window
     return window_slide
 
+ctx.set("range", range)
+
 def register(global_ctx):
     global_ctx.merge(ctx)

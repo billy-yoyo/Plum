@@ -9,7 +9,7 @@ from interpreter_definitions import interpreter
 #    code = f.read()
 
 code = """
-cur, total => (cur:0 + total:0, cur:1 + total:1)
+print(list("1234") :> int := _)
 """
 
 stream = TokenStream(tokenizer, code)

@@ -20,10 +20,11 @@ class IterablePipeStream:
             raise StopIteration()
 
 class PipeStream:
-    def __init__(self, source, executor=None, close=None):
+    def __init__(self, source, executor=None, close=None, stream_converter=None):
         self.source = source
         self.executor = executor or default_executor
         self.close = close or default_close
+        self.stream_converter = stream_converter
         self.this = {}
 
     def __next__(self):
@@ -39,4 +40,10 @@ class PipeStream:
 
     def next(self):
         return next(self)
+
+    def convert_stream(self, values):
+        if self.stream_converter is not None:
+            return self.stream_converter(values)
+        else:
+            return values
     

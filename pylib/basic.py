@@ -4,10 +4,13 @@ from interpreter import Context
 
 ctx = Context()
 
-ctx.set("print", lambda *args: print(*args))
-ctx.set("int", lambda x: int(x))
-ctx.set("float", lambda x: float(x))
-ctx.set("str", lambda x: str(x))
+ctx.set("print", print)
+ctx.set("int", int)
+ctx.set("float", float)
+ctx.set("str", str)
+ctx.set("list", list)
+ctx.set("tuple", tuple)
+ctx.set("len", len)
 
 def register(global_ctx):
     global_ctx.merge(ctx)

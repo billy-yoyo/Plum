@@ -2,6 +2,7 @@ from interpreter import Interpreter
 from functools import reduce
 
 from pipe_stream import PipeStream, StopPipeException
+from pylib.vector import Vector
 
 interpreter = Interpreter()
 
@@ -97,6 +98,8 @@ def wrap_as_stream(value):
         return value
     elif isinstance(value, list):
         return PipeStream(iter(value))
+    elif isinstance(value, Vector):
+        return PipeStream(iter(value), stream_converter=Vector)
     else:
         return PipeStream(iter([value]))
 
@@ -110,7 +113,7 @@ def create_pipe_flow(visitor, node_flow_from, node_flow_to):
         sub_ctx.this = from_value
 
         to_value = flow_to(sub_ctx)
-        return PipeStream(from_value, to_value)
+        return PipeStream(from_value, to_value, stream_converter=from_value.stream_converter)
     return executor
 
 def create_map_flow(visitor, node_flow_from, node_flow_to):
@@ -123,17 +126,17 @@ def create_map_flow(visitor, node_flow_from, node_flow_to):
         sub_ctx.this = from_value
 
         to_value = flow_to(sub_ctx)
-        return PipeStream(from_value, lambda upstream, this: call_function(to_value, next(upstream)))
+        return PipeStream(from_value, lambda upstream, this: call_function(to_value, next(upstream)), stream_converter=from_value.stream_converter)
     return executor
 
 def create_write_flow(visitor, node_flow_from, node_flow_to):
     flow_from = visitor.visit(node_flow_from)
     
-    if node_flow_to.flow_type == "variable":
+    if node_flow_to.type == "variable":
         setter = lambda inner, outer, values: outer.set(node_flow_to.name, values)
-    elif node_flow_to.flow_type == "property":
+    elif node_flow_to.type == "property":
         setter = lambda inner, outer, values: set_property(inner.this, node_flow_to.name, values)
-    elif node_flow_to.flow_type == "property_access":
+    elif node_flow_to.type == "property_access":
         target = visitor.visit(node_flow_to.target)
         setter = lambda inner, outer, values: set_property(target(outer), node_flow_to.name, values)
     else:
@@ -147,9 +150,11 @@ def create_write_flow(visitor, node_flow_from, node_flow_to):
                 values.append(next(from_value))
         except StopPipeException:
             pass
+        values = from_value.convert_stream(values)
 
         outer_ctx = ctx.get_outer()
         setter(ctx, outer_ctx, values)
+        return values
     return executor
 
 def create_read_flow(visitor, node_flow_from, node_flow_to):
@@ -169,6 +174,7 @@ def create_read_flow(visitor, node_flow_from, node_flow_to):
                 values.append(call_function(to_value, next(from_value)))
         except StopPipeException:
             pass
+        values = from_value.convert_stream(values)
             
         return wrap_as_stream(values)
     return executor
